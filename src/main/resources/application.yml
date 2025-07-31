@@ -1,0 +1,12 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/optical_shop?createDatabaseIfNotExist=true
+    username: root
+    password: 13345
+
+  jpa:
+    hibernate:
+      ddl-auto: update
