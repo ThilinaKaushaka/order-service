@@ -1,7 +1,10 @@
 package edu.icet.repository.custom;
 
 
+import edu.icet.model.entity.customer.CustomerEntity;
+import edu.icet.model.entity.customer.CustomerTotalAmountDTO;
 import edu.icet.model.entity.order.OrderEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +17,8 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Integer> {
     @Query(value = "SELECT * FROM `orders` WHERE date = :date",nativeQuery = true)
     List<OrderEntity> getByDate(@Param("date")LocalDate date);
 
+    @Query(value = "SELECT * FROM `orders` WHERE customer_id= :id",nativeQuery = true)
+    List<OrderEntity> getOrdersByCusId(@Param("id") Integer id);
     @Query(value = "SELECT * FROM `orders` WHERE date BETWEEN :startDate AND :endDate",nativeQuery = true)
     List<OrderEntity> getByDateRange(@Param("startDate")LocalDate startDate,@Param("endDate")LocalDate endDate);
 
@@ -31,4 +36,15 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Integer> {
 
     @Query(value ="SELECT * FROM `orders` ORDER BY id DESC LIMIT 1" ,nativeQuery = true)
     OrderEntity getLastOrder();
+
+    // In OrderRepository.java
+    @Query("SELECT new edu.icet.model.entity.customer.CustomerTotalAmountDTO(o.customerId, SUM(o.total)) " + // <-- Use your real package path
+            "FROM OrderEntity o " +
+            "WHERE o.date >= :startDate " +
+            "GROUP BY o.customerId " +
+            "ORDER BY SUM(o.total) DESC")
+    List<CustomerTotalAmountDTO> findTopCustomersByTotalAmountSince(
+            @Param("startDate") LocalDate startDate,
+            Pageable pageable
+    );
 }

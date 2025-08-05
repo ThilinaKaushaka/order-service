@@ -2,8 +2,14 @@ package edu.icet.controller;
 
 
 import edu.icet.model.dto.order.OrderDto;
+import edu.icet.model.entity.customer.CustomerEntity;
+import edu.icet.model.entity.customer.CustomerTotalAmountDTO;
+import edu.icet.model.entity.item.ItemEntity;
+import edu.icet.model.entity.order.OrderEntity;
+import edu.icet.model.entity.order_detail.OrderDetailsEntity;
 import edu.icet.service.custom.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -12,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/order")
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:4200")
 public class OrderController {
     private final OrderService orderService;
 
@@ -56,4 +62,18 @@ public class OrderController {
         return orderService.getLastTenOrders();
     }
 
+    @GetMapping("/search-by-customer-id")
+    List<OrderDto> getByCustomerId(@RequestParam("cus")Integer id){
+        return orderService.searchByCustomer(id);
+    }
+
+    @GetMapping("/top-three-selling-item/{num}")
+    List<OrderDetailsEntity> getTopThreeSellingProduct(@PathVariable Integer num){
+        return orderService.getTopSellingItem(num);
+    }
+
+    @GetMapping("/top-customers/{num}")
+    List<CustomerTotalAmountDTO> getTopOrderingCustomers(@PathVariable Integer num) {
+        return orderService.getTopTenSpenders(num);
+    }
 }

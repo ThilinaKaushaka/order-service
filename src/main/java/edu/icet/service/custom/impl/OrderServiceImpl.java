@@ -4,6 +4,9 @@ package edu.icet.service.custom.impl;
 
 import edu.icet.model.dto.order.OrderDetailsDto;
 import edu.icet.model.dto.order.OrderDto;
+import edu.icet.model.entity.customer.CustomerEntity;
+import edu.icet.model.entity.customer.CustomerTotalAmountDTO;
+import edu.icet.model.entity.item.ItemEntity;
 import edu.icet.model.entity.order.OrderDetailsKey;
 import edu.icet.model.entity.order.OrderEntity;
 import edu.icet.model.entity.order_detail.OrderDetailsEntity;
@@ -14,10 +17,17 @@ import edu.icet.repository.custom.OrderRepository;
 import edu.icet.service.custom.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.YearMonth;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -32,7 +42,7 @@ public class OrderServiceImpl implements OrderService {
     public void addOrder(OrderDto order) {
 
 
-        orderRepository.save(new OrderEntity(order.getId(), order.getDate(), order.getTime(), order.getTotal(), customerRepository.findById(order.getCustomerId()).get()));
+        orderRepository.save(new OrderEntity(order.getId(),LocalDate.now(), LocalTime.now(), order.getTotal(), customerRepository.findById(order.getCustomerId()).get()));
         List<OrderDetailsEntity>list=new ArrayList<>();
         order.getOrderDetails().forEach(orderDetailsDto -> {
             OrderDetailsEntity orderDetailsEntity = new OrderDetailsEntity();
@@ -54,6 +64,10 @@ public class OrderServiceImpl implements OrderService {
 
     private void saveOrderDetails(List<OrderDetailsEntity> list){
         list.forEach(orderDetailsRepository::save
+        );
+
+        list.forEach(orderDetailsEntity ->
+            itemRepository.minItemQty(orderDetailsEntity.getItem().getId(),orderDetailsEntity.getQuantity())
         );
     }
 
@@ -89,6 +103,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public void updateOrder(OrderDto order) {
         addOrder(order);
+    }
+
+    @Override
+    public List<OrderDto> searchByCustomer(Integer id) {
+        return getOrderDtoList(orderRepository.getOrdersByCusId(id));
     }
 
 
@@ -133,6 +152,92 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<OrderDto> getLastTenOrders() {
         return getOrderDtoList(orderRepository.getLastTenOrders());
+    }
+
+    @Override
+    public List<OrderDetailsEntity> getTopSellingItem(Integer time) {
+        if (time == 1) {
+
+            LocalDate aDateInLastWeek = LocalDate.now().minusWeeks(1);
+            LocalDate startDate = aDateInLastWeek.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            LocalDate endDate = aDateInLastWeek.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            Pageable topThree = PageRequest.of(0, 3);
+
+
+            List<ItemEntity> topItems = orderDetailsRepository.findTopSellingItems(startDate, endDate, topThree);
+
+            if (topItems.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+
+            return orderDetailsRepository.findAllByItemsAndDateRange(topItems, startDate, endDate);
+
+        } else if (time == 2) {
+
+            YearMonth lastMonth = YearMonth.now().minusMonths(1);
+            LocalDate startDate = lastMonth.atDay(1);
+            LocalDate endDate = lastMonth.atEndOfMonth();
+            Pageable topThree = PageRequest.of(0, 3);
+
+
+            List<ItemEntity> topItems = orderDetailsRepository.findTopSellingItems(startDate, endDate, topThree);
+
+
+            if (topItems.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+
+            return orderDetailsRepository.findAllByItemsAndDateRange(topItems, startDate, endDate);
+
+
+        } else if (time == 3) {
+            LocalDate aDateInLastYear = LocalDate.now().minusYears(1);
+            LocalDate startDate = aDateInLastYear.with(TemporalAdjusters.firstDayOfYear());
+            LocalDate endDate = aDateInLastYear.with(TemporalAdjusters.lastDayOfYear());
+            Pageable topThree = PageRequest.of(0, 3);
+
+
+            List<ItemEntity> topItems = orderDetailsRepository.findTopSellingItems(startDate, endDate, topThree);
+
+            if (topItems.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+
+            return orderDetailsRepository.findAllByItemsAndDateRange(topItems, startDate, endDate);
+
+
+        }else {
+            return null;
+        }
+
+    }
+
+    @Override
+    public List<CustomerTotalAmountDTO> getTopTenSpenders(Integer periodType) {
+        LocalDate now = LocalDate.now();
+        LocalDate startDate;
+
+        switch (periodType) {
+            case 1:
+                startDate = now.minusWeeks(1);
+                break;
+            case 2:
+                startDate = now.minusMonths(1);
+                break;
+            case 3:
+                startDate = now.minusYears(1);
+                break;
+            default:
+
+                throw new IllegalArgumentException("Invalid period type: " + periodType);
+        }
+
+
+        Pageable topTen = PageRequest.of(0, 10);
+        return orderRepository.findTopCustomersByTotalAmountSince(startDate, topTen);
     }
 
 
